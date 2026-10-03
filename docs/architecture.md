@@ -1,7 +1,7 @@
 ---
 title: Architecture
 author: bend-client contributors
-last_updated: 2026-10-02
+last_updated: 2026-10-03
 tags:
   - bend
   - lean-ethereum
@@ -18,7 +18,8 @@ tags:
 
 - `src/bytes.bend`: byte/hex and endian operations.
 - `src/sha256.bend`: FIPS 180-4 SHA-256.
-- `src/ssz.bend`: SSZ chunks, zero subtrees, list length mixing, and merkleization.
+- `src/merkle/`: hash-generic 32-byte chunk packing, perfect-tree merkleization, bounded trees, and the SHA-256 adapter.
+- `src/ssz.bend`: Lstar SSZ roots built on the reusable Merkle tree library.
 - `src/types.bend`: Lstar containers and their SSZ roots.
 - `src/transition.bend`: slot processing, block-header validation, history updates, and post-state-root validation.
 

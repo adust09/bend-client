@@ -4,3 +4,4 @@ bend-client
 *.js
 *.mjs
 *.gpu
+__pycache__/
