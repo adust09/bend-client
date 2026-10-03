@@ -6,7 +6,7 @@ SPEC="$ROOT/.vendor/leanSpec"
 SPEC_PIN="0b7d33ecbc9ee2435759c92de4da4d08d7faf1c8"
 SPEC_URL="https://github.com/leanEthereum/leanSpec.git"
 MERKLE="$ROOT/deps/bend-merkle-tree"
-MERKLE_PIN="48b4bda3c9f917f066fa3fdc4108d2b22304b070"
+MERKLE_PIN="53d47b46c28803e8e6ccc67e5faabb0254534dbc"
 MERKLE_URL="https://github.com/adust09/bend-merkle-tree.git"
 
 command -v git >/dev/null 2>&1 || { echo "git is required" >&2; exit 127; }

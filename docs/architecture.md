@@ -12,7 +12,7 @@ tags:
 
 ## Version boundary
 
-`VERSION` and `scripts/bootstrap.sh` pin leanSpec commit `0b7d33ecbc9ee2435759c92de4da4d08d7faf1c8` and bend-merkle-tree commit `48b4bda3c9f917f066fa3fdc4108d2b22304b070`. The client does not follow moving dependency branches.
+`VERSION` and `scripts/bootstrap.sh` pin leanSpec commit `0b7d33ecbc9ee2435759c92de4da4d08d7faf1c8` and bend-merkle-tree commit `53d47b46c28803e8e6ccc67e5faabb0254534dbc`. The client does not follow moving dependency branches.
 
 ## Bend-native layer
 

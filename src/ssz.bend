@@ -19,7 +19,7 @@ def zero_tree(depth: Nat) -> List<&2, U32>:
   M.tree.zero_tree(~H.sha256_pair, depth)
 
 def u64_chunk(n: Nat) -> List<&2, U32>:
-  C.Chunk.u64_le(n)
+  B.Bytes.append(B.Bytes.u64_le(n), B.Bytes.zeros(24n))
 
 def bool_chunk(bit: Bool) -> List<&2, U32>:
   match bit:
@@ -29,7 +29,7 @@ def bool_chunk(bit: Bool) -> List<&2, U32>:
       B.Bytes.append({[1] : List<&2, U32>}, B.Bytes.zeros(31n))
 
 def mix_len(root: List<&2, U32>, n: Nat) -> List<&2, U32>:
-  M.tree.mix_in_length(~H.sha256_pair, root, n)
+  hash2(root, u64_chunk(n))
 
 def merkle(+xs: List<&2, List<&2, U32>>) -> List<&2, U32>:
   M.tree.merkleize(~H.sha256_pair, xs)
