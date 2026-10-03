@@ -12,14 +12,14 @@ tags:
 
 ## Version boundary
 
-`VERSION` and `scripts/bootstrap.sh` pin leanSpec commit `0b7d33ecbc9ee2435759c92de4da4d08d7faf1c8`. The client does not follow a moving branch at runtime.
+`VERSION` and `scripts/bootstrap.sh` pin leanSpec commit `0b7d33ecbc9ee2435759c92de4da4d08d7faf1c8` and bend-merkle-tree commit `48b4bda3c9f917f066fa3fdc4108d2b22304b070`. The client does not follow moving dependency branches.
 
 ## Bend-native layer
 
 - `src/bytes.bend`: byte/hex and endian operations.
 - `src/sha256.bend`: FIPS 180-4 SHA-256.
-- `src/merkle/`: hash-generic 32-byte chunk packing, perfect-tree merkleization, bounded trees, and the SHA-256 adapter.
-- `src/ssz.bend`: Lstar SSZ roots built on the reusable Merkle tree library.
+- `deps/bend-merkle-tree`: pinned hash-generic chunk packing, merkleization, bounded trees, and SHA-256 adapter.
+- `src/ssz.bend`: Lstar SSZ roots built on the standalone Merkle tree library.
 - `src/types.bend`: Lstar containers and their SSZ roots.
 - `src/transition.bend`: slot processing, block-header validation, history updates, and post-state-root validation.
 
@@ -36,7 +36,7 @@ Every Bend source passes `bend --check-only`. Golden values come from the pinned
 - SQLite persistence, checkpoint/head/backfill sync;
 - validator duties, Prometheus metrics, and `/lean/v0` HTTP APIs.
 
-The sidecar checkout is isolated under ignored `.vendor/leanSpec`. Bootstrap refuses to replace a modified checkout and verifies the exact commit before dependency synchronization.
+The sidecar checkout is isolated under ignored `.vendor/leanSpec`; the Merkle library is under ignored `deps/bend-merkle-tree` because Bend import paths cannot traverse hidden directory names. Bootstrap refuses to replace modified checkouts and verifies both exact commits before dependency synchronization.
 
 ## Verification boundary
 

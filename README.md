@@ -46,34 +46,20 @@ GENESIS_VALIDATORS:
 
 ## Merkle tree library
 
-`src/merkle/` provides reusable perfect-binary Merkle trees over 32-byte chunks. The hash is a compile-time template, so callers can substitute any top-level function of type `Chunk -> Chunk -> Chunk`.
+The reusable implementation is maintained as the public MIT-licensed [adust09/bend-merkle-tree](https://github.com/adust09/bend-merkle-tree) library. `scripts/bootstrap.sh` pins an audited commit under `deps/bend-merkle-tree`; `src/ssz.bend` consumes that checkout directly.
 
-Use the built-in SHA-256 adapter or provide another hash:
-
-```bend
-import Base
-import ./src/merkle/tree.bend as M
-import ./src/merkle/sha256.bend as SHA
-
-def root(chunks: List<&2, List<&2, U32>>) -> List<&2, U32>:
-  M.tree.merkleize(~SHA.sha256_pair, chunks)
-
-def bounded(chunks: List<&2, List<&2, U32>>, limit: Nat)
-  -> Maybe<&2, List<&2, U32>>:
-  M.tree.merkleize_limit_checked(~SHA.sha256_pair, chunks, limit)
-```
-
-`chunk.bend` packs byte sequences into zero-padded chunks. `tree.bend` provides zero-subtree roots, unbounded and capacity-bounded merkleization, and SSZ length mixing. Inputs to tree functions must contain exactly 32 bytes per chunk. Use the checked bounded API for untrusted input; it returns `None` when the leaf count exceeds the declared limit.
+The standalone repository documents its hash-generic API, SHA-256 adapter, independent golden vectors, and Bend CI. Update `MERKLE_PIN` in `scripts/bootstrap.sh` explicitly when adopting a new release.
 
 ## Verify
 
 ```sh
+./scripts/bootstrap.sh
 ./scripts/test.sh
 bend main.bend -o bend-client
 ./tests/e2e.sh
 ```
 
-The conformance test compares Bend results with leanSpec-generated golden roots for SHA-256, SSZ, bitlists, genesis, and an Lstar block transition. The Merkle suite checks SHA-256 roots against leanSpec's `ssz` package and exercises the same tree with an independent toy hash. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
+The conformance test compares Bend results with leanSpec-generated golden roots for SHA-256, SSZ, bitlists, genesis, and an Lstar block transition. The standalone Merkle repository owns its generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
 
 For external API conformance testing:
 

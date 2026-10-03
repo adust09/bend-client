@@ -1,11 +1,11 @@
 import Base
 import ./bytes.bend as B
-import ./merkle/chunk.bend as C
-import ./merkle/tree.bend as M
-import ./merkle/sha256.bend as H
+import ../deps/bend-merkle-tree/src/merkle/chunk.bend as C
+import ../deps/bend-merkle-tree/src/merkle/tree.bend as M
+import ../deps/bend-merkle-tree/src/merkle/sha256.bend as H
 
-# SSZ hash_tree_root for the Lstar containers, on top of the generic Merkle
-# library in src/merkle. Tree shapes and the SHA-256 pair hash both come from
+# SSZ hash_tree_root for the Lstar containers, on top of the pinned standalone
+# bend-merkle-tree library. Tree shapes and the SHA-256 pair hash both come from
 # there, so this module only states the SSZ-level rules: which subtrees a
 # container has, how lengths are mixed in, and how short byte vectors are packed.
 
