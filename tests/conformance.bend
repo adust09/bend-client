@@ -135,14 +135,29 @@ def reject_base(+g: T.State, +bits: List<&2, Bool>, +o: T.Outcome) -> T.Outcome:
     case T.Reject{reason}:
       T.Reject{reason}
 
+# Mirror tests/vectors.py: heads and sources advance with the data slot, and
+# the first aggregate anchors on the genesis root.
+def att_source_pick(first: Bool, p0: List<&2, U32>, p1: List<&2, U32>) -> List<&2, U32>:
+  match first:
+    case True{}:
+      +genesis = p0
+      genesis
+    case False{}:
+      +later = p1
+      later
+
+def att_source_root(+k: Nat, p0: List<&2, U32>, p1: List<&2, U32>) -> List<&2, U32>:
+  att_source_pick(Nat.is_eq(Nat.sub(k, 2n), 0n), p0, p1)
+
 def many_atts(fuel: Nat, +k: Nat, +p0: List<&2, U32>, +p1: List<&2, U32>) -> List<&2, T.AggAtt>:
   match fuel:
     case 0n:
       Nil{}
     case 1n+m:
-      +target : T.Checkpoint = T.Cp{p1, 1n}
-      +source : T.Checkpoint = T.Cp{p0, 0n}
-      +one : List<&2, T.AggAtt> = T.Agg{True{} <> Nil{}, T.Ad{k, target, target, source}} <> Nil{}
+      +head : T.Checkpoint = T.Cp{p1, Nat.sub(k, 1n)}
+      +sroot = att_source_root(k, p0, p1)
+      +source : T.Checkpoint = T.Cp{sroot, Nat.sub(k, 2n)}
+      +one : List<&2, T.AggAtt> = T.Agg{True{} <> Nil{}, T.Ad{k, head, head, source}} <> Nil{}
       +rest = many_atts(m, Nat.add(k, 1n), p0, p1)
       List.append(&2, T.AggAtt, one, rest)
 
