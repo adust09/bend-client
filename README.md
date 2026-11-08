@@ -46,9 +46,9 @@ GENESIS_VALIDATORS:
 
 ## Merkle tree library
 
-The reusable implementation is maintained as the public MIT-licensed [adust09/bend-merkle-tree](https://github.com/adust09/bend-merkle-tree) library. `scripts/bootstrap.sh` pins an audited commit under `deps/bend-merkle-tree`; `src/ssz.bend` consumes that checkout directly.
+The reusable layers are maintained as public MIT-licensed libraries: [adust09/bend-merkle-tree](https://github.com/adust09/bend-merkle-tree) for the hash-generic tree primitives, and [adust09/bend-ssz](https://github.com/adust09/bend-ssz) for the SHA-256-bound SSZ serialization layer (chunk encodings, bitlist packing and roots). `scripts/bootstrap.sh` pins audited commits under `deps/`, where `deps/bend-ssz/scripts/bootstrap.sh` in turn pins the merkle-tree checkout bend-ssz imports.
 
-The standalone repository documents its hash-generic API, SHA-256 adapter, independent golden vectors, and Bend CI. Update `MERKLE_PIN` in `scripts/bootstrap.sh` explicitly when adopting a new release.
+Update `MERKLE_PIN` / `SSZ_PIN` in `scripts/bootstrap.sh` explicitly when adopting new releases.
 
 ## Verify
 
@@ -63,7 +63,10 @@ The conformance test compares Bend results with leanSpec-generated golden roots 
 
 ```sh
 uv run --directory .vendor/leanSpec python ../../tests/vectors.py
-``` The standalone Merkle repository owns its generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
+
+```
+
+The standalone repositories own their generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
 
 For external API conformance testing:
 

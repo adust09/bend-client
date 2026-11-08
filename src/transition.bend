@@ -206,8 +206,7 @@ def after_header(+o: T.Outcome, +b: T.Block) -> T.Outcome:
       T.Reject{reason}
     case T.Ok{state}:
       +body = T.block_body(b)
-      +next = after_atts(J.process_attestations(state, body), b)
-      next
+      after_atts(J.process_attestations(state, body), b)
 
 def after_slots(o: T.Outcome, +b: T.Block) -> T.Outcome:
   match o:
