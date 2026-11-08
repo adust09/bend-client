@@ -1,7 +1,7 @@
 import Base
-import ../src/bytes.bend as B
-import ../src/sha256.bend as H
-import ../src/ssz.bend as S
+import ../deps/bend-merkle-tree/src/bytes.bend as B
+import ../deps/bend-merkle-tree/src/sha256.bend as H
+import ../deps/bend-ssz/src/ssz.bend as S
 import ../src/types.bend as T
 import ../src/justification.bend as J
 import ../src/transition.bend as R
