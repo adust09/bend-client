@@ -1,7 +1,7 @@
 ---
 title: Architecture
 author: bend-client contributors
-last_updated: 2026-10-03
+last_updated: 2026-11-08
 tags:
   - bend
   - lean-ethereum
@@ -16,12 +16,11 @@ tags:
 
 ## Bend-native layer
 
-- `src/bytes.bend`: byte/hex and endian operations.
-- `src/sha256.bend`: FIPS 180-4 SHA-256.
 - `deps/bend-merkle-tree`: pinned hash-generic chunk packing, merkleization, bounded trees, and SHA-256 adapter.
-- `src/ssz.bend`: Lstar SSZ roots built on the standalone Merkle tree library.
-- `src/types.bend`: Lstar containers and their SSZ roots.
-- `src/transition.bend`: slot processing, block-header validation, history updates, and post-state-root validation.
+- `deps/bend-ssz`: pinned SHA-256-bound SSZ serialization layer (chunk encodings, bitlist packing and roots) over the merkle library.
+- `src/types.bend`: Lstar containers, their SSZ roots, and the transition result type.
+- `src/justification.bend`: 3SF-mini attestation filters, vote tallies, and the justification/finalization cascade, including the square/pronic justifiability rule.
+- `src/transition.bend`: slot processing, block-header validation, history updates, and the wiring that folds attestations before the post-state-root check.
 
 Every Bend source passes `bend --check-only`. Golden values come from the pinned `eth-ssz-specs` and leanSpec implementations.
 
@@ -36,8 +35,8 @@ Every Bend source passes `bend --check-only`. Golden values come from the pinned
 - SQLite persistence, checkpoint/head/backfill sync;
 - validator duties, Prometheus metrics, and `/lean/v0` HTTP APIs.
 
-The sidecar checkout is isolated under ignored `.vendor/leanSpec`; the Merkle library is under ignored `deps/bend-merkle-tree` because Bend import paths cannot traverse hidden directory names. Bootstrap refuses to replace modified checkouts and verifies both exact commits before dependency synchronization.
+The sidecar checkout is isolated under ignored `.vendor/leanSpec`; the merkle-tree and bend-ssz libraries live under ignored `deps/` (non-hidden) because Bend import paths cannot traverse hidden directory names, with bend-ssz pinning its own merkle-tree checkout. Bootstrap refuses to replace modified checkouts and verifies every exact commit before dependency synchronization.
 
 ## Verification boundary
 
-`scripts/test.sh` checks every Bend module and compares deterministic consensus roots. `tests/e2e.sh` starts the compiled public entry point and validates live health and metrics endpoints. leanSpec's own `apitest` command can exercise the full HTTP conformance suite.
+`scripts/test.sh` checks every Bend module and compares deterministic consensus roots; `tests/vectors.py` regenerates them with the pinned leanSpec. `tests/e2e.sh` starts the compiled public entry point and validates live health and metrics endpoints. leanSpec's own `apitest` command can exercise the full HTTP conformance suite.

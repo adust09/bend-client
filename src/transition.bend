@@ -1,11 +1,10 @@
 import Base
 import ./types.bend as T
+import ./justification.bend as J
 
 # Lstar state transition. Signature verification is an upstream gate in leanSpec.
-
-type Outcome is Data:
-  Ok{state: T.State}
-  Reject{reason: String}
+# The 3SF-mini justification rules below are ported 1:1 from the pinned leanSpec
+# (state_transition.py, slot.py, containers/state.py) at the same commit.
 
 def reason_not_future() -> String:
   "BLOCK_SLOT_NOT_IN_FUTURE"
@@ -46,10 +45,10 @@ def cache_step(s: T.State, blank: Bool) -> T.State:
     case False{}:
       advance_only(s)
 
-def slots_go(fuel: Nat, phase: Nat, progressed: Bool, +s: T.State, +target: Nat, cmp: Cmp, blank: Bool) -> Outcome:
+def slots_go(fuel: Nat, phase: Nat, progressed: Bool, +s: T.State, +target: Nat, cmp: Cmp, blank: Bool) -> T.Outcome:
   match fuel:
     case 0n:
-      Reject{reason_not_future()}
+      T.Reject{reason_not_future()}
     case 1n+p:
       match phase:
         case 0n:
@@ -59,15 +58,15 @@ def slots_go(fuel: Nat, phase: Nat, progressed: Bool, +s: T.State, +target: Nat,
             case _ LT{}:
               slots_go(p, 2n, progressed, s, target, cmp, T.header_blank(s))
             case True{} EQ{}:
-              Ok{s}
+              T.Ok{s}
             case False{} EQ{}:
-              Reject{reason_not_future()}
+              T.Reject{reason_not_future()}
             case _ GT{}:
-              Reject{reason_not_future()}
+              T.Reject{reason_not_future()}
         case _:
           slots_go(p, 0n, True{}, cache_step(s, blank), target, EQ{}, False{})
 
-def process_slots(s: T.State, target: Nat) -> Outcome:
+def process_slots(s: T.State, target: Nat) -> T.Outcome:
   slots_go(8192n, 0n, False{}, s, target, EQ{}, False{})
 
 def apply_cp(c: T.Checkpoint, parent: List<&2, U32>, genesis_parent: Bool) -> T.Checkpoint:
@@ -76,6 +75,20 @@ def apply_cp(c: T.Checkpoint, parent: List<&2, U32>, genesis_parent: Bool) -> T.
       T.Cp{parent, 0n}
     case False{}:
       c
+
+# Capacity extension for the justified-slot bitfield, mirroring
+# JustifiedSlots.extend_to_slot: one False bit per slot up to the target.
+def extend_bits(+bits: List<&2, Bool>, +boundary: Nat, +target: Nat) -> List<&2, Bool>:
+  +c = Nat.cmp(target, boundary)
+  +gt = Cmp.is_gt(c)
+  +n = List.length(&2, Bool, bits)
+  +gap = Nat.cmp(Nat.sub(target, boundary), n)
+  +gt2 = Cmp.is_gt(gap)
+  +cap = Nat.sub(target, boundary)
+  +pad : List<&2, Bool> = List.replicate(Bool, Nat.sub(cap, n), False{})
+  +grown = List.append(&2, Bool, bits, pad)
+  +res = Bool.pick(List<&2, Bool>, gt2, grown, bits)
+  Bool.pick(List<&2, Bool>, gt, res, bits)
 
 def append_zero_roots(n: Nat, xs: List<&2, List<&2, U32>>) -> List<&2, List<&2, U32>>:
   match n:
@@ -87,16 +100,20 @@ def append_zero_roots(n: Nat, xs: List<&2, List<&2, U32>>) -> List<&2, List<&2, 
 def apply_header(s: T.State, b: T.Block, +parent: List<&2, U32>, +genesis_parent: Bool) -> T.State:
   match s b:
     case T.St{time, slot, T.Hd{hslot, _, _, _, _}, justified, finalized, hist, jslots, validators, jroots, jvotes} T.Blk{+bs, bp, bparent, _, body}:
-      history = List.append(&2, List<&2, U32>, hist, parent <> Nil{})
-      skipped = Nat.sub(Nat.sub(bs, hslot), 1n)
+      +fin = apply_cp(finalized, parent, genesis_parent)
+      +last_slot = Nat.sub(bs, 1n)
+      +window = extend_bits(jslots, T.cp_slot(fin), last_slot)
+      +history = List.append(&2, List<&2, U32>, hist, parent <> Nil{})
+      +skipped = Nat.sub(Nat.sub(bs, hslot), 1n)
+      +filled = append_zero_roots(skipped, history)
       T.St{
         time,
         slot,
         T.Hd{bs, bp, bparent, T.zero(), T.body_root(body)},
         apply_cp(justified, parent, genesis_parent),
-        apply_cp(finalized, parent, genesis_parent),
-        append_zero_roots(skipped, history),
-        jslots,
+        fin,
+        filled,
+        window,
         validators,
         jroots,
         jvotes
@@ -104,10 +121,10 @@ def apply_header(s: T.State, b: T.Block, +parent: List<&2, U32>, +genesis_parent
 
 def header_go(fuel: Nat, phase: Nat, +s: T.State, +b: T.Block,
   +parent: List<&2, U32>, +st_slot: Nat, +bslot: Nat, +hslot: Nat,
-  +proposer_i: Nat, +nvals: Nat, +bparent: List<&2, U32>, check: Bool) -> Outcome:
+  +proposer_i: Nat, +nvals: Nat, +bparent: List<&2, U32>, check: Bool) -> T.Outcome:
   match fuel:
     case 0n:
-      Reject{reason_mismatch()}
+      T.Reject{reason_mismatch()}
     case 1n+p:
       match phase:
         case 0n:
@@ -115,35 +132,35 @@ def header_go(fuel: Nat, phase: Nat, +s: T.State, +b: T.Block,
         case 1n:
           match check:
             case True{}:
-              Reject{reason_empty()}
+              T.Reject{reason_empty()}
             case False{}:
               header_go(p, 2n, s, b, parent, st_slot, bslot, hslot, proposer_i, nvals, bparent, Nat.is_eq(bslot, st_slot))
         case 2n:
           match check:
             case False{}:
-              Reject{reason_mismatch()}
+              T.Reject{reason_mismatch()}
             case True{}:
               header_go(p, 3n, s, b, parent, st_slot, bslot, hslot, proposer_i, nvals, bparent, Nat.is_gt(bslot, hslot))
         case 3n:
           match check:
             case False{}:
-              Reject{reason_old()}
+              T.Reject{reason_old()}
             case True{}:
               header_go(p, 4n, s, b, parent, st_slot, bslot, hslot, proposer_i, nvals, bparent, Nat.is_eq(proposer_i, Nat.mod(bslot, nvals)))
         case 4n:
           match check:
             case False{}:
-              Reject{reason_proposer()}
+              T.Reject{reason_proposer()}
             case True{}:
               header_go(p, 5n, s, b, parent, st_slot, bslot, hslot, proposer_i, nvals, bparent, T.bytes_eq(bparent, parent))
         case _:
           match check:
             case False{}:
-              Reject{reason_parent()}
+              T.Reject{reason_parent()}
             case True{}:
-              Ok{apply_header(s, b, parent, Nat.is_eq(hslot, 0n))}
+              T.Ok{apply_header(s, b, parent, Nat.is_eq(hslot, 0n))}
 
-def header_ok(s: T.State, b: T.Block) -> Outcome:
+def header_ok(s: T.State, b: T.Block) -> T.Outcome:
   +s2 = s
   +b2 = b
   +parent = T.header_root(T.header_of(s2))
@@ -162,31 +179,41 @@ def header_ok(s: T.State, b: T.Block) -> Outcome:
     False{}
   )
 
-def finish_eq(post: T.State, same: Bool) -> Outcome:
+def finish_eq(post: T.State, same: Bool) -> T.Outcome:
   match same:
     case True{}:
-      Ok{post}
+      T.Ok{post}
     case False{}:
-      Reject{reason_state()}
+      T.Reject{reason_state()}
 
-def finish(b: T.Block, post: T.State) -> Outcome:
+def finish(b: T.Block, post: T.State) -> T.Outcome:
   +post2 = post
   finish_eq(post2, T.bytes_eq(T.block_state(b), T.state_root(post2)))
 
-def after_header(o: Outcome, b: T.Block) -> Outcome:
+# ============================================================================
+# Wire the fold into the transition: the block state root is committed after
+# the body's attestations are applied.
+def after_atts(+o: T.Outcome, +b: T.Block) -> T.Outcome:
   match o:
-    case Reject{reason}:
-      Reject{reason}
-    case Ok{state}:
+    case T.Reject{reason}:
+      T.Reject{reason}
+    case T.Ok{state}:
       finish(b, state)
 
-def after_slots(o: Outcome, +b: T.Block) -> Outcome:
+def after_header(+o: T.Outcome, +b: T.Block) -> T.Outcome:
   match o:
-    case Reject{reason}:
-      Reject{reason}
-    case Ok{state}:
+    case T.Reject{reason}:
+      T.Reject{reason}
+    case T.Ok{state}:
+      +body = T.block_body(b)
+      after_atts(J.process_attestations(state, body), b)
+
+def after_slots(o: T.Outcome, +b: T.Block) -> T.Outcome:
+  match o:
+    case T.Reject{reason}:
+      T.Reject{reason}
+    case T.Ok{state}:
       after_header(header_ok(state, b), b)
 
-def transition(s: T.State, b: T.Block) -> Outcome:
-  +b2 = b
-  after_slots(process_slots(s, T.block_slot(b2)), b2)
+def transition(+s: T.State, +b: T.Block) -> T.Outcome:
+  after_slots(process_slots(s, T.block_slot(b)), b)

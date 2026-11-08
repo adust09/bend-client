@@ -8,6 +8,9 @@ SPEC_URL="https://github.com/leanEthereum/leanSpec.git"
 MERKLE="$ROOT/deps/bend-merkle-tree"
 MERKLE_PIN="53d47b46c28803e8e6ccc67e5faabb0254534dbc"
 MERKLE_URL="https://github.com/adust09/bend-merkle-tree.git"
+SSZ="$ROOT/deps/bend-ssz"
+SSZ_PIN="c5e44488370cc8b64b8f1c3c887e5b9ddab41e37"
+SSZ_URL="https://github.com/adust09/bend-ssz.git"
 
 command -v git >/dev/null 2>&1 || { echo "git is required" >&2; exit 127; }
 command -v uv >/dev/null 2>&1 || { echo "uv is required" >&2; exit 127; }
@@ -37,5 +40,7 @@ checkout_pin() {
 
 checkout_pin "leanSpec sidecar" "$SPEC" "$SPEC_URL" "$SPEC_PIN"
 checkout_pin "Merkle library" "$MERKLE" "$MERKLE_URL" "$MERKLE_PIN"
+checkout_pin "SSZ library" "$SSZ" "$SSZ_URL" "$SSZ_PIN"
+"$SSZ/scripts/bootstrap.sh"
 uv sync --directory "$SPEC" --no-dev
-printf 'leanSpec=%s\nbend-merkle-tree=%s\n' "$SPEC_PIN" "$MERKLE_PIN"
+printf 'leanSpec=%s\nbend-merkle-tree=%s\nbend-ssz=%s\n' "$SPEC_PIN" "$MERKLE_PIN" "$SSZ_PIN"

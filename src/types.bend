@@ -1,6 +1,6 @@
 import Base
-import ./bytes.bend as B
-import ./ssz.bend as S
+import ../deps/bend-merkle-tree/src/bytes.bend as B
+import ../deps/bend-ssz/src/ssz.bend as S
 
 # Lstar consensus values. Roots are 32-byte lists. Public keys are 52-byte lists.
 
@@ -40,7 +40,7 @@ def zero() -> List<&2, U32>:
   S.zero32()
 
 def is_zero(b: List<&2, U32>) -> Bool:
-  String.eq(B.Bytes.hex(b), "0000000000000000000000000000000000000000000000000000000000000000")
+  B.Bytes.eq(b, S.zero32())
 
 def bytes_eq(a: List<&2, U32>, b: List<&2, U32>) -> Bool:
   B.Bytes.eq(a, b)
@@ -75,72 +75,10 @@ def att_root(a: AttData) -> List<&2, U32>:
     case Ad{slot, head, target, source}:
       S.merkle([S.u64_chunk(slot), cp_root(head), cp_root(target), cp_root(source)])
 
-def maybe_bit(m: Maybe<&2, Bool>) -> U32:
-  match m:
-    case None{}:
-      0
-    case Some{False{}}:
-      0
-    case Some{True{}}:
-      1
-
-def bit_at(+bits: List<&2, Bool>, i: Nat) -> U32:
-  maybe_bit(List.get(&2, Bool, bits, i))
-
-def packed_byte(+bits: List<&2, Bool>) -> U32:
-  (bit_at(bits, 0n)
-    + U32.shln(bit_at(bits, 1n), 1n)
-    + U32.shln(bit_at(bits, 2n), 2n)
-    + U32.shln(bit_at(bits, 3n), 3n)
-    + U32.shln(bit_at(bits, 4n), 4n)
-    + U32.shln(bit_at(bits, 5n), 5n)
-    + U32.shln(bit_at(bits, 6n), 6n)
-    + U32.shln(bit_at(bits, 7n), 7n) : U32)
-
-def pack_bits_go(fuel: Nat, +bits: List<&2, Bool>, empty: Bool) -> List<&2, U32>:
-  match fuel:
-    case 0n:
-      Nil{}
-    case 1n+p:
-      match empty:
-        case True{}:
-          Nil{}
-        case False{}:
-          +rest = List.drop(&2, Bool, bits, 8n)
-          packed_byte(bits) <> pack_bits_go(p, rest, List.is_empty(&2, Bool, rest))
-
-def pack_bits(+bits: List<&2, Bool>) -> List<&2, U32>:
-  pack_bits_go(32769n, bits, List.is_empty(&2, Bool, bits))
-
-def pad_chunk(+bytes: List<&2, U32>) -> List<&2, U32>:
-  B.Bytes.append(bytes, B.Bytes.zeros(Nat.sub(32n, B.Bytes.len(bytes))))
-
-def byte_chunks_go(fuel: Nat, +bytes: List<&2, U32>, empty: Bool) -> List<&2, List<&2, U32>>:
-  match fuel:
-    case 0n:
-      Nil{}
-    case 1n+p:
-      match empty:
-        case True{}:
-          Nil{}
-        case False{}:
-          +rest = B.Bytes.drop(bytes, 32n)
-          pad_chunk(B.Bytes.take(bytes, 32n)) <> byte_chunks_go(p, rest, List.is_empty(&2, U32, rest))
-
-def byte_chunks(+bytes: List<&2, U32>) -> List<&2, List<&2, U32>>:
-  byte_chunks_go(32769n, bytes, List.is_empty(&2, U32, bytes))
-
-def bit_chunk_limit(limit_bits: Nat) -> Nat:
-  Nat.add(Nat.div(Nat.sub(limit_bits, 1n), 256n), 1n)
-
-def bitlist_root(+bits: List<&2, Bool>, limit_bits: Nat) -> List<&2, U32>:
-  +n = List.length(&2, Bool, bits)
-  S.mix_len(S.merkle_limit(byte_chunks(pack_bits(bits)), bit_chunk_limit(limit_bits)), n)
-
 def agg_root(a: AggAtt) -> List<&2, U32>:
   match a:
     case Agg{bits, data}:
-      S.chunk2(bitlist_root(bits, 4096n), att_root(data))
+      S.chunk2(S.bitlist_root(bits, 4096n), att_root(data))
 
 def agg_roots(xs: List<&2, AggAtt>) -> List<&2, List<&2, U32>>:
   match xs:
@@ -159,10 +97,10 @@ def hist_root(xs: List<&2, List<&2, U32>>) -> List<&2, U32>:
   S.list_root(xs, 262144n)
 
 def jslots_root(bits: List<&2, Bool>) -> List<&2, U32>:
-  bitlist_root(bits, 262144n)
+  S.bitlist_root(bits, 262144n)
 
 def jvotes_root(bits: List<&2, Bool>) -> List<&2, U32>:
-  bitlist_root(bits, 1073741824n)
+  S.bitlist_root(bits, 1073741824n)
 
 def state_root(s: State) -> List<&2, U32>:
   match s:
@@ -239,7 +177,22 @@ def block_state(b: Block) -> List<&2, U32>:
     case Blk{_, _, _, state_root, _}:
       state_root
 
+def block_body(b: Block) -> List<&2, AggAtt>:
+  match b:
+    case Blk{_, _, _, _, body}:
+      body
+
+def cp_slot(c: Checkpoint) -> Nat:
+  match c:
+    case Cp{_, slot}:
+      slot
+
 def block_root(b: Block) -> List<&2, U32>:
   match b:
     case Blk{slot, proposer, parent, state_root, body}:
       S.merkle([S.u64_chunk(slot), S.u64_chunk(proposer), parent, state_root, body_root(body)])
+
+# The transition result: a post-state or the language-neutral rejection reason.
+type Outcome is Data:
+  Ok{state: State}
+  Reject{reason: String}
