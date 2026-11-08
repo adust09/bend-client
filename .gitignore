@@ -1,6 +1,8 @@
 .vendor/
+/deps/bend-merkle-tree/
 bend-client
 *.c
 *.js
 *.mjs
 *.gpu
+__pycache__/

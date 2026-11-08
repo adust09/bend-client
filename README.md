@@ -44,15 +44,22 @@ GENESIS_VALIDATORS:
     proposal_public_key: "0x<52-byte-hex>"
 ```
 
+## Merkle tree library
+
+The reusable implementation is maintained as the public MIT-licensed [adust09/bend-merkle-tree](https://github.com/adust09/bend-merkle-tree) library. `scripts/bootstrap.sh` pins an audited commit under `deps/bend-merkle-tree`; `src/ssz.bend` consumes that checkout directly.
+
+The standalone repository documents its hash-generic API, SHA-256 adapter, independent golden vectors, and Bend CI. Update `MERKLE_PIN` in `scripts/bootstrap.sh` explicitly when adopting a new release.
+
 ## Verify
 
 ```sh
+./scripts/bootstrap.sh
 ./scripts/test.sh
 bend main.bend -o bend-client
 ./tests/e2e.sh
 ```
 
-The conformance test compares Bend results with leanSpec-generated golden roots for SHA-256, SSZ, bitlists, genesis, and an Lstar block transition. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
+The conformance test compares Bend results with leanSpec-generated golden roots for SHA-256, SSZ, bitlists, genesis, and an Lstar block transition. The standalone Merkle repository owns its generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
 
 For external API conformance testing:
 
