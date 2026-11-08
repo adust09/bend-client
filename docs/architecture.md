@@ -1,7 +1,7 @@
 ---
 title: Architecture
 author: bend-client contributors
-last_updated: 2026-10-03
+last_updated: 2026-11-08
 tags:
   - bend
   - lean-ethereum
@@ -20,8 +20,9 @@ tags:
 - `src/sha256.bend`: FIPS 180-4 SHA-256.
 - `deps/bend-merkle-tree`: pinned hash-generic chunk packing, merkleization, bounded trees, and SHA-256 adapter.
 - `src/ssz.bend`: Lstar SSZ roots built on the standalone Merkle tree library.
-- `src/types.bend`: Lstar containers and their SSZ roots.
-- `src/transition.bend`: slot processing, block-header validation, history updates, and post-state-root validation.
+- `src/types.bend`: Lstar containers, their SSZ roots, and the transition result type.
+- `src/justification.bend`: 3SF-mini attestation filters, vote tallies, and the justification/finalization cascade, including the square/pronic justifiability rule.
+- `src/transition.bend`: slot processing, block-header validation, history updates, and the wiring that folds attestations before the post-state-root check.
 
 Every Bend source passes `bend --check-only`. Golden values come from the pinned `eth-ssz-specs` and leanSpec implementations.
 
@@ -40,4 +41,4 @@ The sidecar checkout is isolated under ignored `.vendor/leanSpec`; the Merkle li
 
 ## Verification boundary
 
-`scripts/test.sh` checks every Bend module and compares deterministic consensus roots. `tests/e2e.sh` starts the compiled public entry point and validates live health and metrics endpoints. leanSpec's own `apitest` command can exercise the full HTTP conformance suite.
+`scripts/test.sh` checks every Bend module and compares deterministic consensus roots; `tests/vectors.py` regenerates them with the pinned leanSpec. `tests/e2e.sh` starts the compiled public entry point and validates live health and metrics endpoints. leanSpec's own `apitest` command can exercise the full HTTP conformance suite.

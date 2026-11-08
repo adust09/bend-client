@@ -239,7 +239,22 @@ def block_state(b: Block) -> List<&2, U32>:
     case Blk{_, _, _, state_root, _}:
       state_root
 
+def block_body(b: Block) -> List<&2, AggAtt>:
+  match b:
+    case Blk{_, _, _, _, body}:
+      body
+
+def cp_slot(c: Checkpoint) -> Nat:
+  match c:
+    case Cp{_, slot}:
+      slot
+
 def block_root(b: Block) -> List<&2, U32>:
   match b:
     case Blk{slot, proposer, parent, state_root, body}:
       S.merkle([S.u64_chunk(slot), S.u64_chunk(proposer), parent, state_root, body_root(body)])
+
+# The transition result: a post-state or the language-neutral rejection reason.
+type Outcome is Data:
+  Ok{state: State}
+  Reject{reason: String}

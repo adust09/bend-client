@@ -59,7 +59,11 @@ bend main.bend -o bend-client
 ./tests/e2e.sh
 ```
 
-The conformance test compares Bend results with leanSpec-generated golden roots for SHA-256, SSZ, bitlists, genesis, and an Lstar block transition. The standalone Merkle repository owns its generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
+The conformance test compares Bend results with leanSpec-generated golden roots for SHA-256, SSZ, bitlists, genesis, an Lstar block transition, and a 3SF-mini attestation chain. `tests/vectors.py` prints the golden values from the pinned leanSpec:
+
+```sh
+uv run --directory .vendor/leanSpec python ../../tests/vectors.py
+``` The standalone Merkle repository owns its generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
 
 For external API conformance testing:
 
