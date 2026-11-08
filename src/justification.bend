@@ -309,7 +309,7 @@ def root_pick(+eq: Bool, +lt: Bool, +deeper: Bool) -> Bool:
     case False{}:
       lt
 
-def root_nil(+b: List<&2, U32>) -> Bool:
+def root_lt_nil(+b: List<&2, U32>) -> Bool:
   match b:
     case Nil{}:
       False{}
@@ -319,7 +319,7 @@ def root_nil(+b: List<&2, U32>) -> Bool:
 def root_lt(+a: List<&2, U32>, +b: List<&2, U32>) -> Bool:
   match a:
     case Nil{}:
-      root_nil(b)
+      root_lt_nil(b)
     case Con{head_a, tail_a}:
       match b:
         case Nil{}:

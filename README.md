@@ -63,7 +63,10 @@ The conformance test compares Bend results with leanSpec-generated golden roots 
 
 ```sh
 uv run --directory .vendor/leanSpec python ../../tests/vectors.py
-``` The standalone Merkle repository owns its generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
+
+```
+
+The standalone repositories own their generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
 
 For external API conformance testing:
 
