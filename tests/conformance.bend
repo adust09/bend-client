@@ -5,6 +5,7 @@ import ../deps/bend-ssz/src/ssz.bend as S
 import ../src/types.bend as T
 import ../src/justification.bend as J
 import ../src/transition.bend as R
+import ../src/fork_choice.bend as F
 
 def ascii(s: String) -> List<&2, U32>:
   match s:
@@ -177,6 +178,75 @@ def chain_state(o: T.Outcome, fallback: T.State) -> T.State:
     case T.Reject{reason}:
       fallback
 
+# --- fork-choice scenario (mirrors tests/vectors.py) -------------------------
+
+def fc_empty_body() -> List<&2, T.AggAtt>:
+  Nil{}
+
+def fc_seal_from(+post: T.State, +b: T.Block) -> T.Block:
+  +root = T.state_root(post)
+  T.Blk{T.block_slot(b), T.block_proposer(b), T.block_parent(b), root, T.block_body(b)}
+
+def fc_who3() -> List<&2, Bool>:
+  True{} <> True{} <> True{} <> Nil{}
+
+def fc_who2() -> List<&2, Bool>:
+  True{} <> True{} <> Nil{}
+
+def fc_who12() -> List<&2, Bool>:
+  False{} <> True{} <> True{} <> Nil{}
+
+def fc_who0() -> List<&2, Bool>:
+  True{} <> Nil{}
+
+def fc_proofs_one(+p: F.Proof) -> List<&2, F.Proof>:
+  p <> Nil{}
+
+def fc_entry(+d: T.AttData, who: List<&2, Bool>) -> F.VoteEntry:
+  +blob : List<&2, U32> = Nil{}
+  +proof : F.Proof = F.Pf{who, blob}
+  +proofs = fc_proofs_one(proof)
+  F.Ve{d, proofs}
+
+def fc_pool_add(+xs: List<&2, F.VoteEntry>, +e: F.VoteEntry) -> List<&2, F.VoteEntry>:
+  e <> xs
+
+def fc_store_time(+store: F.FcStore, +t: Nat) -> F.FcStore:
+  match store:
+    case F.Fc{_, +head, +safe_at, +justified, +finalized, +blocks, +states, +known, +pending}:
+      F.Fc{t, head, safe_at, justified, finalized, blocks, states, known, pending}
+
+def fc_set_pools(+store: F.FcStore, +known: List<&2, F.VoteEntry>,
+  +pending: List<&2, F.VoteEntry>) -> F.FcStore:
+  match store:
+    case F.Fc{+time, +head, +safe_at, +justified, +finalized, +blocks, +states, _, _}:
+      F.Fc{time, head, safe_at, justified, finalized, blocks, states, known, pending}
+
+def fc_head_hex(+store: F.FcStore) -> String:
+  match store:
+    case F.Fc{_, +head, _, _, _, _, _, _, _}:
+      B.Bytes.hex(head)
+
+def fc_safe_hex(+store: F.FcStore) -> String:
+  match store:
+    case F.Fc{_, _, +safe_at, _, _, _, _, _, _}:
+      B.Bytes.hex(safe_at)
+
+def fc_pick_went(step: F.FcStep, +fallback: F.FcStore) -> F.FcStore:
+  match step:
+    case F.Went{store}:
+      store
+    case F.Stop{_}:
+      +same : F.FcStore = fallback
+      same
+
+def fc_checked_str(c: F.Checked) -> String:
+  match c:
+    case F.Clean{}:
+      "CLEAN"
+    case F.Dirty{reason}:
+      reason
+
 def main() -> IO(Unit):
   +g : T.State = T.genesis(1000n, one_val())
   +b : T.Block = T.Blk{1n, 0n, parent_root(), post_root(), Nil{}}
@@ -195,6 +265,57 @@ def main() -> IO(Unit):
   +o3 = chain_b3(s1, s2, o2)
   +s3 = chain_state(o3, s2)
   +o4 = chain_b4(s2, s3, o3)
+  +anchor : T.Block = T.Blk{0n, 0n, T.zero(), T.state_root(g3), fc_empty_body()}
+  +fc_anchorroot = T.block_root(anchor)
+  +b1_u : T.Block = T.Blk{1n, 1n, fc_anchorroot, T.zero(), fc_empty_body()}
+  +o1_fc = step(g3, b1_u)
+  +s1_fc = chain_state(o1_fc, g3)
+  +b1s = fc_seal_from(s1_fc, b1_u)
+  +b1root = T.block_root(b1s)
+  +cp1 : T.Checkpoint = T.Cp{b1root, 1n}
+  +cp0 : T.Checkpoint = T.Cp{fc_anchorroot, 0n}
+  +att2 : T.AttData = T.Ad{2n, cp1, cp1, cp0}
+  +bits2 : List<&2, Bool> = True{} <> True{} <> Nil{}
+  +body2a : List<&2, T.AggAtt> = T.Agg{bits2, att2} <> Nil{}
+  +b2a_u : T.Block = T.Blk{2n, 2n, b1root, T.zero(), body2a}
+  +o2a = step(s1_fc, b2a_u)
+  +s2a = chain_state(o2a, s1_fc)
+  +b2a = fc_seal_from(s2a, b2a_u)
+  +b2aroot = T.block_root(b2a)
+  +bits2b : List<&2, Bool> = True{} <> Nil{}
+  +body2b : List<&2, T.AggAtt> = T.Agg{bits2b, att2} <> Nil{}
+  +b2b_u : T.Block = T.Blk{2n, 2n, b1root, T.zero(), body2b}
+  +o2b = step(s1_fc, b2b_u)
+  +s2b = chain_state(o2b, s1_fc)
+  +b2b = fc_seal_from(s2b, b2b_u)
+  +b2broot = T.block_root(b2b)
+  +store0 = F.fc_anchor(g3, anchor)
+  +st1 = F.fc_on_block(store0, b1s)
+  +store1 = fc_pick_went(st1, store0)
+  +store1t = fc_store_time(store1, 5n)
+  +st2a = F.fc_on_block(store1t, b2a)
+  +store2 = fc_pick_went(st2a, store1t)
+  +st2b = F.fc_on_block(store2, b2b)
+  +store3 = fc_pick_went(st2b, store2)
+  +dataV : T.AttData = T.Ad{3n, T.Cp{b2broot, 2n}, T.Cp{b2broot, 2n}, cp0}
+  +dataU : T.AttData = T.Ad{3n, T.Cp{b2aroot, 2n}, T.Cp{b2aroot, 2n}, cp0}
+  +poolV = fc_pool_add(Nil{}, fc_entry(dataV, fc_who3()))
+  +store_v = fc_set_pools(store3, poolV, Nil{})
+  +st_u = F.fc_update_head(store_v)
+  +poolU = fc_pool_add(Nil{}, fc_entry(dataU, fc_who2()))
+  +store_p = fc_set_pools(store3, Nil{}, poolU)
+  +st_s = F.fc_safe_target(store_p)
+  +pend2 = fc_pool_add(fc_pool_add(Nil{}, fc_entry(dataU, fc_who12())), fc_entry(dataV, fc_who0()))
+  +store_c = fc_set_pools(store3, Nil{}, pend2)
+  +st_c = F.fc_accept(store_c)
+  +cpAnc : T.Checkpoint = T.Cp{fc_anchorroot, 0n}
+  +attC : T.AttData = T.Ad{0n, cpAnc, cpAnc, cpAnc}
+  +attUNK : T.AttData = T.Ad{0n, T.Cp{b2aroot, 2n}, T.Cp{b2aroot, 2n}, T.Cp{T.zero(), 0n}}
+  +attSAT : T.AttData = T.Ad{0n, cpAnc, cpAnc, T.Cp{b1root, 1n}}
+  +attHO : T.AttData = T.Ad{0n, cpAnc, T.Cp{b1root, 1n}, cpAnc}
+  +attTNA : T.AttData = T.Ad{0n, T.Cp{b2broot, 2n}, T.Cp{b2aroot, 2n}, cpAnc}
+  +attBH : T.AttData = T.Ad{0n, T.Cp{b2aroot, 2n}, T.Cp{b1root, 1n}, cpAnc}
+  +attFAR : T.AttData = T.Ad{5n, cpAnc, cpAnc, cpAnc}
   do IO<Unit>:
     IO.print("sha-empty=" ++ H.sha256_hex(Nil{}))
     IO.print("sha-abc=" ++ H.sha256_hex(ascii("abc")))
@@ -215,3 +336,17 @@ def main() -> IO(Unit):
     IO.print("att-justify=" ++ outcome_root(o2))
     IO.print("att-finalize=" ++ outcome_root(o3))
     IO.print("att-finalize2=" ++ outcome_root(o4))
+    IO.print("fc-anchor=" ++ B.Bytes.hex(fc_anchorroot))
+    IO.print("fc-on-block1=" ++ fc_head_hex(store1))
+    IO.print("fc-on-block2=" ++ fc_head_hex(store2))
+    IO.print("fc-tie-break=" ++ fc_head_hex(store3))
+    IO.print("fc-head-votes=" ++ fc_head_hex(st_u))
+    IO.print("fc-safe-target=" ++ fc_safe_hex(st_s))
+    IO.print("fc-accept=" ++ fc_head_hex(st_c))
+    IO.print("fc-att-clean=" ++ fc_checked_str(F.fc_validate(store3, attC)))
+    IO.print("fc-att-unknown-source=" ++ fc_checked_str(F.fc_validate(store3, attUNK)))
+    IO.print("fc-att-source-after-target=" ++ fc_checked_str(F.fc_validate(store3, attSAT)))
+    IO.print("fc-att-head-older=" ++ fc_checked_str(F.fc_validate(store3, attHO)))
+    IO.print("fc-att-target-not-ancestor=" ++ fc_checked_str(F.fc_validate(store3, attTNA)))
+    IO.print("fc-att-before-head=" ++ fc_checked_str(F.fc_validate(store3, attBH)))
+    IO.print("fc-att-too-far=" ++ fc_checked_str(F.fc_validate(store3, attFAR)))
