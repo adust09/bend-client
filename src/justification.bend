@@ -624,7 +624,7 @@ def attach_hit(+hit: Bool, +refs: List<&2, ChainRef>, +jslots: List<&2, Bool>, +
       kept
 
 def attach_tally(+refs: List<&2, ChainRef>, +n: Nat, +juries: List<&2, Jury>, +jslots: List<&2, Bool>, +justified: T.Checkpoint, +fin: T.Checkpoint, +target: T.Checkpoint, +source: T.Checkpoint, +voters: List<&2, Nat>) -> Attempt:
-  +troot = T.cp_root(target)
+  +troot = T.cp_raw(target)
   +fresh : List<&2, Bool> = List.replicate(Bool, n, False{})
   +votes = tally_default(jury_get(juries, troot), fresh)
   +marked = mark_votes(voters, votes)
