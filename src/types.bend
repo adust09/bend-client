@@ -50,6 +50,13 @@ def cp_root(c: Checkpoint) -> List<&2, U32>:
     case Cp{root, slot}:
       S.chunk2(root, S.u64_chunk(slot))
 
+# The checkpoint's raw root field, the key blocks and states are stored under.
+# cp_root above is the checkpoint's SSZ container root and never a map key.
+def cp_raw(c: Checkpoint) -> List<&2, U32>:
+  match c:
+    case Cp{+root, _}:
+      root
+
 def header_root(h: Header) -> List<&2, U32>:
   match h:
     case Hd{slot, proposer, parent, state_root, body_root}:
