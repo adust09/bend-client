@@ -66,6 +66,8 @@ uv run --directory .vendor/leanSpec python ../../tests/vectors.py
 
 ```
 
+The proof coverage selector in `src/proof_selection.bend` reuses fork-choice proofs without interpreting their cryptographic payloads. Its conformance suite checks canonical SSZ tie-breaking, greedy selection order, cross-pool coverage, and empty-proof rejection against pinned leanSpec. `make test` also verifies that these golden fixtures are current; see [the selector contract](docs/architecture.md#proof-coverage-selection).
+
 The standalone repositories own their generic tree and independent hash tests. The end-to-end test starts the compiled client and probes `/lean/v0/health` and `/metrics`.
 
 For external API conformance testing:

@@ -1,7 +1,7 @@
 ---
 title: Architecture
 author: bend-client contributors
-last_updated: 2026-11-08
+last_updated: 2026-11-12
 tags:
   - bend
   - lean-ethereum
@@ -21,8 +21,25 @@ tags:
 - `src/types.bend`: Lstar containers, their SSZ roots, and the transition result type.
 - `src/justification.bend`: 3SF-mini attestation filters, vote tallies, and the justification/finalization cascade, including the square/pronic justifiability rule.
 - `src/transition.bend`: slot processing, block-header validation, history updates, and the wiring that folds attestations before the post-state-root check.
+- `src/proof_selection.bend`: greedy proof coverage selection over the existing `fork_choice.bend` proof type; no signing, aggregation, or verification.
 
 Every Bend source passes `bend --check-only`. Golden values come from the pinned `eth-ssz-specs` and leanSpec implementations.
+
+## Proof coverage selection
+
+`select_proofs_for_coverage(priority, fallback)` takes two `List<&2, F.Proof>` pools. `Nil{}` represents either an absent or empty Python pool. Each `F.Pf{who, blob}` retains the original participant bitlist and opaque proof bytes.
+
+The caller must supply SSZ-valid values: at most 4096 participant bits, at most 524288 payload bytes, and byte values in `0..255`. As with the fork-choice store, the host owns decoding and cryptographic verification. The selector rejects proofs with no set participant bits, including in an otherwise redundant fallback pool, with `Rejected{"EMPTY_AGGREGATION_BITS"}`.
+
+For each pool, priority first, the selector repeatedly chooses the proof adding the most uncovered validators. Ties go to the lexicographically largest complete `SingleMessageAggregate` SSZ encoding: both little-endian offsets, the participant bitlist with its termination bit, then the payload. Coverage carries across pools. Duplicate proofs never add a second selection. The result is `Selected{proofs, covered}`, with proofs in greedy selection order and unique validator indices in ascending order.
+
+`tests/proof_selection_vectors.py` obtains expected selections and encoding fingerprints directly from the pinned leanSpec. It generates the Bend inputs and golden output, including empty pools, invalid empty proofs, overlaps, duplicates, permutations, offset and bitlist boundaries, and seeded cases. `make test` checks that the committed fixtures still match leanSpec, then compiles and runs the proof-selection suite as a native Bend executable against them. The cases include 4096 participant bits and 524288-byte payloads differing only at their last byte. Native builds avoid Bend 2.0.34's direct-runner memory fault when constructing a 512 KiB list, reproducible even without the selector. To regenerate after an intentional reference change:
+
+```sh
+uv run --no-dev --directory .vendor/leanSpec python ../../tests/proof_selection_vectors.py --write
+```
+
+This is a standalone pure computation, not a runtime replacement. `main.bend` does not invoke it.
 
 ## Runtime sidecar
 
